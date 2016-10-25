@@ -10,7 +10,7 @@ class SelectOrderClausesSpec < Minitest::Spec
       initial = ds
       final = ds.append_order_as_selection
 
-      assert_equal initial.opts[:select] + selects_to_append, final.opts[:select]
+      assert_equal (initial.opts[:select] || []) + selects_to_append, final.opts[:select] || []
 
       order_info = final.opts.fetch(:order_info)
 
@@ -42,6 +42,20 @@ class SelectOrderClausesSpec < Minitest::Spec
 
         assert_order_append \
           ds: User.dataset.select(:created_at).order_by(:created_at),
+          selects_to_append: [],
+          order_names: [:created_at]
+      end
+    end
+
+    describe "when the dataset has been made via #from_self" do
+      it "when they are present" do
+        assert_order_append \
+          ds: User.dataset.select(:id).from_self.order_by(:id),
+          selects_to_append: [],
+          order_names: [:id]
+
+        assert_order_append \
+          ds: User.dataset.select(:users__created_at).from_self.order_by(:created_at),
           selects_to_append: [],
           order_names: [:created_at]
       end

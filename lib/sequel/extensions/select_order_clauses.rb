@@ -185,7 +185,7 @@ module Sequel
       end
 
       if (froms = ds.opts[:from]) && froms.length == 1
-        from = extract_selection_expression(froms.first)
+        from = unwrap_alias(froms.first)
         if from.is_a?(Sequel::Dataset)
           extract_selections(from)
         end
@@ -211,6 +211,15 @@ module Sequel
         order.expression
       else
         order
+      end
+    end
+
+    def unwrap_alias(expression)
+      case expression
+      when Sequel::SQL::AliasedExpression
+        expression.expression
+      else
+        expression
       end
     end
 
