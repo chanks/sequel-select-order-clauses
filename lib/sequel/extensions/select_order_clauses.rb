@@ -197,7 +197,7 @@ module Sequel
       when Symbol
         expression
       when Sequel::SQL::AliasedExpression
-        expression.aliaz
+        expression.alias
       when Sequel::SQL::Identifier
         extract_expression_name(expression.value)
       when Sequel::SQL::QualifiedIdentifier
