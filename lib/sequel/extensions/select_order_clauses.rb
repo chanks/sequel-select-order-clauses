@@ -81,7 +81,7 @@ module Sequel
         # Order expressions can be simple references to aliases, which is a
         # pretty simple and useful case to check for. In other words:
         # `SELECT function() AS my_value FROM table ORDER BY my_value`
-        if e.is_a?(Symbol) && s.aliaz == e
+        if e.is_a?(Symbol) && s.alias == e
           true
         else
           # Otherwise, see whether the expression being aliased does what we
