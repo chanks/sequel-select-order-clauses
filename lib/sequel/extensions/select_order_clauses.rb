@@ -94,6 +94,7 @@ module Sequel
         case e
         when Symbol
           # SELECT "table"."column" FROM "table" ORDER BY "column"
+          e = e.to_s if s.column.is_a?(String)
           s.column == e
         when Sequel::SQL::QualifiedIdentifier
           # SELECT "table"."column" FROM "table" ORDER BY "table"."column"
@@ -201,7 +202,9 @@ module Sequel
       when Sequel::SQL::Identifier
         extract_expression_name(expression.value)
       when Sequel::SQL::QualifiedIdentifier
-        extract_expression_name(expression.column)
+        v = expression.column
+        v = v.to_sym if v.is_a?(String)
+        extract_expression_name(v)
       end
     end
 

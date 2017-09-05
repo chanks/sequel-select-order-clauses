@@ -2,6 +2,8 @@ require 'sequel'
 
 $: << File.join(File.dirname(__FILE__), '..', 'lib')
 
+Sequel.split_symbols = true
+
 Sequel::Database.extension :select_order_clauses
 
 DB = Sequel.sqlite
