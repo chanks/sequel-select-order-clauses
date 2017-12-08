@@ -8,76 +8,80 @@ module Sequel
     def select_order
       return self unless order = @opts[:order]
 
-      select(
-        *order.map.with_index { |o, index|
-          Sequel.as(
-            normalize_expression(unwrap_order_expression(o)),
-            "order_#{index}".to_sym,
-          )
-        }
-      )
+      cached_dataset(:_select_order_ds) do
+        select(
+          *order.map.with_index { |o, index|
+            Sequel.as(
+              normalize_expression(unwrap_order_expression(o)),
+              "order_#{index}".to_sym,
+            )
+          }
+        )
+      end
     end
 
     def append_order_as_selection
       return self unless order = @opts[:order]
       return self if @opts[:order_info]
 
-      # Note that since we're iterating over the order to return a modified
-      # version of this dataset, we can't modify the order in this method and
-      # remain sensible.
-      ds = self
+      cached_dataset(:_append_order_as_selection_ds) do
+        # Note that since we're iterating over the order to return a modified
+        # version of this dataset, we can't modify the order in this method and
+        # remain sensible.
+        ds = self
 
-      selections = extract_selections(ds).map { |s| normalize_selection(s) }
+        selections = extract_selections(ds).map { |s| normalize_selection(s) }
 
-      order_info =
-        order.map.with_index do |o, index|
-          exp = normalize_expression(unwrap_order_expression(o))
-          dir = extract_direction(o)
+        order_info =
+          order.map.with_index do |o, index|
+            exp = normalize_expression(unwrap_order_expression(o))
+            dir = extract_direction(o)
 
-          # Try to figure out which of the select expressions is going to
-          # correspond to this order expression. This heuristic may not be
-          # perfect, but do our best and raise an error if we find more than one
-          # selection.
-          expression_selects =
-            selections.select do |s|
-              selection_satisfies_expression?(s, exp)
+            # Try to figure out which of the select expressions is going to
+            # correspond to this order expression. This heuristic may not be
+            # perfect, but do our best and raise an error if we find more than one
+            # selection.
+            expression_selects =
+              selections.select do |s|
+                selection_satisfies_expression?(s, exp)
+              end
+
+            name =
+              case expression_selects.length
+              when 0 then nil
+              when 1
+                expression_select = expression_selects.first
+
+                # Once we have the SELECT expression that matches our ORDER BY
+                # expression, we just extract its name so that we'll be able to
+                # figure out how we sorted records later on. The exception is if
+                # the matching SELECT expression is "table".* - in that case
+                # we'll need to get the name from the ORDER BY expression.
+                target_expression =
+                  if expression_select.is_a?(Sequel::SQL::ColumnAll)
+                    exp
+                  else
+                    expression_select
+                  end
+
+                extract_expression_name(target_expression)
+              else
+                raise "Found more than one selection in #{inspect} that matched the expression #{exp.inspect}: #{expression_selects.inspect}"
+              end
+
+            # After all that, we still might not have been able to get a name.
+            # In that case, just append the ORDER BY expression to the SELECT
+            # clause with a special alias that we'll use later.
+            unless name
+              name = "order_#{index}".to_sym
+              ds = ds.select_append(Sequel.as(exp, name))
             end
 
-          name =
-            case expression_selects.length
-            when 0 then nil
-            when 1
-              expression_select = expression_selects.first
-
-              # Once we have the SELECT expression that matches our ORDER BY
-              # expression, we just extract its name so that we'll be able to
-              # figure out how we sorted records later on. The exception is if
-              # the matching SELECT expression is "table".* - in that case
-              # we'll need to get the name from the ORDER BY expression.
-              target_expression =
-                if expression_select.is_a?(Sequel::SQL::ColumnAll)
-                  exp
-                else
-                  expression_select
-                end
-
-              extract_expression_name(target_expression)
-            else
-              raise "Found more than one selection in #{inspect} that matched the expression #{exp.inspect}: #{expression_selects.inspect}"
-            end
-
-          # After all that, we still might not have been able to get a name.
-          # In that case, just append the ORDER BY expression to the SELECT
-          # clause with a special alias that we'll use later.
-          unless name
-            name = "order_#{index}".to_sym
-            ds = ds.select_append(Sequel.as(exp, name))
+            {name: name, direction: dir}.freeze
           end
 
-          {name: name, direction: dir}
-        end
-
-      ds.clone(order_info: order_info)
+        ds.clone(order_info: order_info.freeze)
+      end
     end
 
     private

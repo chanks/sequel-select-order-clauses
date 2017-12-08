@@ -11,6 +11,9 @@ class SelectOrderClausesSpec < Minitest::Spec
       final = ds.select_order
 
       assert_equal selects, final.opts[:select]
+
+      # Make sure that dataset is cached.
+      assert_equal final.object_id, ds.select_order.object_id
     end
 
     it "should select only the order clauses" do
@@ -41,6 +44,9 @@ class SelectOrderClausesSpec < Minitest::Spec
       order_info = final.opts.fetch(:order_info)
 
       assert_equal order_names, order_info.map { |h| h.fetch(:name) }
+
+      # Make sure that dataset is cached.
+      assert_equal final.object_id, ds.append_order_as_selection.object_id
     end
 
     it "should do nothing to queries without order_by clauses" do
