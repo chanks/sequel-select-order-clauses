@@ -5,6 +5,19 @@ require 'sequel/extensions/select_order_clauses/version'
 
 module Sequel
   module SelectOrderClauses
+    def select_order
+      return self unless order = @opts[:order]
+
+      select(
+        *order.map.with_index { |o, index|
+          Sequel.as(
+            normalize_expression(unwrap_order_expression(o)),
+            "order_#{index}".to_sym,
+          )
+        }
+      )
+    end
+
     def append_order_as_selection
       return self unless order = @opts[:order]
       return self if @opts[:order_info]

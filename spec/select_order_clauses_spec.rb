@@ -5,6 +5,32 @@ class SelectOrderClausesSpec < Minitest::Spec
     assert Sequel::SelectOrderClauses::VERSION.is_a?(String)
   end
 
+  describe "select_order" do
+    def assert_select_order(ds:, selects:)
+      initial = ds
+      final = ds.select_order
+
+      assert_equal selects, final.opts[:select]
+    end
+
+    it "should select only the order clauses" do
+      assert_select_order(
+        ds: User.dataset,
+        selects: nil,
+      )
+
+      assert_select_order(
+        ds: User.dataset.order_by(Sequel.desc(:id)),
+        selects: [Sequel.as(:id, :order_0)],
+      )
+
+      assert_select_order(
+        ds: User.dataset.order_by(Sequel.desc(:id), :other_column),
+        selects: [Sequel.as(:id, :order_0), Sequel.as(:other_column, :order_1)],
+      )
+    end
+  end
+
   describe "append_order_as_selection" do
     def assert_order_append(ds:, selects_to_append:, order_names:)
       initial = ds
